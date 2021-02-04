@@ -1,0 +1,137 @@
+<html>
+<head>
+  <title>MSG Reader - Example</title>
+  <style type="text/css">
+    .info-box {
+      color: #F5F5F5;
+      padding: 2em;
+    }
+
+    .error-msg {
+      background-color: #D80A0A;
+    }
+
+    .wizard-msg {
+      background-color: #673AB7;
+    }
+
+    .field-block {
+      padding: 1em 2em;
+    }
+
+    .field-block .field-label {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+<div class="msg-example">
+  <div class="info-box wizard-msg">
+    1. Choose *.msg file...
+  </div>
+  <div class="field-block">
+    <input type="file" multiple="" class="src-file"/>
+  </div>
+
+  <div class="msg-info" style="display: none;">
+    <div class="info-box wizard-msg">
+      2. MSG info (<span class="msg-file-name"></span>)
+    </div>
+    <div class="field-block">
+      <div class="field-label">To</div>
+      <div class="msg-to"></div>
+    </div>
+  </div>
+</div>
+
+<div class="incorrect-type info-box error-msg" style="display: none;">
+  Sorry, the file you selected is not MSG type
+</div>
+
+<div class="file-api-not-available info-box error-msg" style="display: none;">
+  Sorry, your browser isn't supported
+</div>
+<script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+<script src="../DataStream.js"></script>
+<script src="../msg.reader.js"></script>
+<script>
+  function isSupportedFileAPI() {
+    return window.File && window.FileReader && window.FileList && window.Blob;
+  }
+
+  function formatEmail(data) {
+    return data.name ? data.name + " [" + data.email + "]" : data.email;
+  }
+
+  function parseHeaders(headers) {
+    var parsedHeaders = {};
+    if (!headers) {
+      return parsedHeaders;
+    }
+    var headerRegEx = /(.*)\: (.*)/g;
+    while (m = headerRegEx.exec(headers)) {
+      // todo: Pay attention! Header can be presented many times (e.g. Received). Handle it, if needed!
+      parsedHeaders[m[1]] = m[2];
+    }
+    return parsedHeaders;
+  }
+
+  function getMsgDate(rawHeaders) {
+    // Example for the Date header
+    var headers = parseHeaders(rawHeaders);
+    if (!headers['Date']){
+      return '-';
+    }
+    return new Date(headers['Date']);
+  }
+
+  $(function () {
+    if (isSupportedFileAPI()) {
+      $('.src-file').change(function () {
+        for (i=0; i < this.files.length; i++) {
+              var selectedFile = this.files[i];
+              
+              $('.msg-example .msg-file-name').append(selectedFile.name);
+
+              // read file...
+              var fileReader = new FileReader();
+              fileReader.onload = function (evt) {
+
+                var buffer = evt.target.result;
+                var msgReader = new MSGReader(buffer);
+                var fileData = msgReader.getFileData();
+                if (!fileData.error) {
+
+                  $('.msg-example .msg-to').append(jQuery.map(fileData.recipients, function (recipient, i) {
+                    return formatEmail(recipient)+"<br>";
+                  }).join('<br/><br/>'));
+                  
+                  $('.msg-info').show();
+
+                  // Use msgReader.getAttachment to access attachment content ...
+                  // msgReader.getAttachment(0) or msgReader.getAttachment(fileData.attachments[0])
+                } else {
+                  $('.msg-info').hide();
+                  $('.incorrect-type').show();
+                }
+              };
+              fileReader.readAsArrayBuffer(selectedFile);
+            }
+        }
+
+
+
+
+
+
+
+      );
+    } else {
+      $('.msg-example').hide();
+      $('.file-api-not-available').show();
+    }
+  });
+</script>
+</body>
+</html>
